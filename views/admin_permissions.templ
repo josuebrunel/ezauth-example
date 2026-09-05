@@ -1,0 +1,57 @@
+package views
+
+import (
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+)
+
+templ AdminPermissions(auth *ezauth.EzAuth, permissions []*models.Permission) {
+	@Layout(auth, "Permissions") {
+		<h2><i class="bi bi-lock"></i> Permissions</h2>
+		<p>Permissions are named capabilities granted to roles (see the <a href="/admin/roles">Roles</a> page) and checked via <code>RequirePermission</code> middleware or <code>auth.UserHasPermission</code>.</p>
+		<article>
+			<header>Create a permission</header>
+			<form
+				hx-post="/auth/admin/permissions"
+				hx-swap="none"
+				hx-on::after-request="if (event.detail.successful) { htmx.trigger(document.body, 'refresh-permissions'); event.detail.elt.reset(); }"
+			>
+				<div class="grid">
+					<input type="text" name="name" placeholder="e.g. posts:write" required/>
+					<input type="text" name="description" placeholder="Description (optional)"/>
+					<button type="submit"><i class="bi bi-plus-lg"></i> Create</button>
+				</div>
+			</form>
+		</article>
+		<div id="permissions-list" hx-trigger="refresh-permissions from:body" hx-get="/admin/permissions/fragment" hx-swap="innerHTML">
+			@AdminPermissionRows(permissions)
+		</div>
+	}
+}
+
+templ AdminPermissionRows(permissions []*models.Permission) {
+	if len(permissions) == 0 {
+		<p>No permissions yet.</p>
+	} else {
+		<table class="striped">
+			<thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
+			<tbody>
+				for _, p := range permissions {
+					<tr>
+						<td><code>{ p.Name }</code></td>
+						<td>{ p.Description }</td>
+						<td>
+							<button
+								class="btn-sm secondary"
+								hx-delete={ "/auth/admin/permissions/" + p.ID }
+								hx-confirm={ "Delete permission " + p.Name + "?" }
+								hx-target="closest tr"
+								hx-swap="delete"
+							><i class="bi bi-trash"></i> Delete</button>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}

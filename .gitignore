@@ -1,0 +1,6 @@
+/bin/
+/data/
+*.db
+*.db-journal
+.env
+**/*_templ.go

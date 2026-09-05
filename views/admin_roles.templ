@@ -1,0 +1,87 @@
+package views
+
+import (
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+)
+
+templ AdminRoles(auth *ezauth.EzAuth, roles []*models.Role, permissions []*models.Permission) {
+	@Layout(auth, "Roles") {
+		<h2><i class="bi bi-person-badge"></i> Roles</h2>
+		<p>Roles group permissions and are granted to users. <code>RequireRole</code>/<code>RequirePermission</code> middleware consult these RBAC tables, not the legacy comma-separated <code>User.Roles</code> field.</p>
+		<article>
+			<header>Create a role</header>
+			<form
+				hx-post="/auth/admin/roles"
+				hx-swap="none"
+				hx-on::after-request="if (event.detail.successful) { htmx.trigger(document.body, 'refresh-roles'); event.detail.elt.reset(); }"
+			>
+				<div class="grid">
+					<input type="text" name="name" placeholder="e.g. editor" required/>
+					<input type="text" name="description" placeholder="Description (optional)"/>
+					<button type="submit"><i class="bi bi-plus-lg"></i> Create</button>
+				</div>
+			</form>
+		</article>
+		<div id="roles-list" hx-trigger="refresh-roles from:body" hx-get="/admin/roles/fragment" hx-swap="innerHTML">
+			@AdminRoleRows(auth, roles, permissions)
+		</div>
+	}
+}
+
+templ AdminRoleRows(auth *ezauth.EzAuth, roles []*models.Role, permissions []*models.Permission) {
+	if len(roles) == 0 {
+		<p>No roles yet.</p>
+	} else {
+		for _, role := range roles {
+			<article>
+				<header>
+					<strong>{ role.Name }</strong>
+					if role.Description != "" {
+						<small> — { role.Description }</small>
+					}
+					<button
+						class="btn-sm secondary"
+						style="float:right"
+						hx-delete={ "/auth/admin/roles/" + role.ID }
+						hx-confirm={ "Delete role " + role.Name + "? This revokes it from every user that holds it." }
+						hx-target="closest article"
+						hx-swap="delete"
+					><i class="bi bi-trash"></i> Delete</button>
+				</header>
+				if granted, err := auth.Repo.PermissionsByRoleID(ctx, role.ID); err == nil && len(granted) > 0 {
+					<p>
+						for _, gp := range granted {
+							<span class="badge badge-info">
+								{ gp.Name }
+								<a
+									href="#"
+									title="Revoke"
+									hx-delete={ "/auth/admin/roles/" + role.Name + "/permissions/" + gp.Name }
+									hx-confirm={ "Revoke " + gp.Name + " from " + role.Name + "?" }
+									hx-target="closest span"
+									hx-swap="delete"
+								>&#215;</a>
+							</span>{" "}
+						}
+					</p>
+				}
+				<form
+					hx-post={ "/auth/admin/roles/" + role.Name + "/permissions" }
+					hx-swap="none"
+					hx-on::after-request="if (event.detail.successful) { htmx.trigger(document.body, 'refresh-roles'); event.detail.elt.reset(); }"
+				>
+					<div class="grid">
+						<select name="permission_name" required>
+							<option value="">Grant permission…</option>
+							for _, p := range permissions {
+								<option value={ p.Name }>{ p.Name }</option>
+							}
+						</select>
+						<button type="submit" class="btn-sm"><i class="bi bi-plus-lg"></i> Grant</button>
+					</div>
+				</form>
+			</article>
+		}
+	}
+}

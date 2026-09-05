@@ -1,0 +1,33 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      APP_ADDR: ":8080"
+      APP_ADMIN_EMAIL: "${ADMIN_EMAIL:-}"
+      APP_LOG_LEVEL: "${LOG_LEVEL:-DEBUG}"
+      EZAUTH_DB_DIALECT: sqlite
+      EZAUTH_DB_DSN: /data/ezauth.db
+      EZAUTH_API_KEY: "${EZAUTH_API_KEY:?set EZAUTH_API_KEY in .env}"
+      EZAUTH_JWT_SECRET: "${EZAUTH_JWT_SECRET:?set EZAUTH_JWT_SECRET in .env}"
+      EZAUTH_BASE_URL: "http://localhost:8080"
+      EZAUTH_LOGIN_PAGE_URL: /login
+      EZAUTH_REGISTER_PAGE_URL: /register
+      EZAUTH_REDIRECT_AFTER_LOGIN: /dashboard
+      EZAUTH_REDIRECT_AFTER_REGISTER: /login
+      EZAUTH_SMTP_HOST: mailpit
+      EZAUTH_SMTP_PORT: "1025"
+      EZAUTH_SMTP_FROM: "noreply@ezauth-example.local"
+    volumes:
+      - ./data:/data
+    depends_on:
+      - mailpit
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "8025:8025" # web UI: view password-reset emails here
+      - "1025:1025" # SMTP

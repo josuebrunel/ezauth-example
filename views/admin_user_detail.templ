@@ -1,0 +1,211 @@
+package views
+
+import (
+	"time"
+
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+	"github.com/josuebrunel/ezauth/pkg/service"
+)
+
+templ AdminUserDetail(
+	auth *ezauth.EzAuth,
+	user *models.User,
+	userRoles []*models.Role,
+	allRoles []*models.Role,
+	permissions []*models.Permission,
+	history []service.AuthHistoryEntry,
+	auditLogs []*models.AuditLog,
+) {
+	@Layout(auth, user.DisplayName()) {
+		<hgroup>
+			<h2>{ user.DisplayName() }</h2>
+			<p>
+				{ user.Email }
+				if user.EmailVerified {
+					<span class="badge badge-soft-success">verified</span>
+				} else {
+					<span class="badge badge-soft-warning">unverified</span>
+				}
+			</p>
+		</hgroup>
+		<article>
+			<header><i class="bi bi-person-lines-fill"></i> Profile info</header>
+			<div class="grid">
+				<div>
+					<p><strong>First name</strong><br/>{ orDash(user.FirstName) }</p>
+					<p><strong>Last name</strong><br/>{ orDash(user.LastName) }</p>
+					<p><strong>Username</strong><br/>{ orDash(user.Username) }</p>
+					<p><strong>Phone</strong><br/>{ orDash(user.Phone) }</p>
+				</div>
+				<div>
+					<p><strong>Locale</strong><br/>{ orDash(user.Locale) }</p>
+					<p><strong>Timezone</strong><br/>{ orDash(user.Timezone) }</p>
+					<p><strong>Avatar URL</strong><br/>{ orDash(user.AvatarURL) }</p>
+					<p><strong>Provider</strong><br/>{ orDash(user.Provider) }</p>
+				</div>
+				<div>
+					<p><strong>Created</strong><br/>{ user.CreatedAt.Format("2006-01-02 15:04") }</p>
+					<p><strong>Last login</strong><br/>{ formatTimePtr(user.LastLoginAt) }</p>
+					<p><strong>Last active</strong><br/>{ formatTimePtr(user.LastActiveAt) }</p>
+				</div>
+			</div>
+		</article>
+		<div class="grid">
+			<article>
+				<header><i class="bi bi-toggle2-on"></i> Status</header>
+				if user.IsActive {
+					<p><span class="badge badge-success">active</span></p>
+					<button
+						class="btn-sm secondary"
+						hx-post={ "/auth/admin/users/" + user.ID + "/suspend" }
+						hx-swap="none"
+						hx-confirm="Suspend this user? They won't be able to log in."
+						hx-on::after-request="if (event.detail.successful) window.location.reload()"
+					><i class="bi bi-pause-circle"></i> Suspend</button>
+				} else {
+					<p><span class="badge badge-error">suspended</span></p>
+					<button
+						class="btn-sm"
+						hx-post={ "/auth/admin/users/" + user.ID + "/reactivate" }
+						hx-swap="none"
+						hx-on::after-request="if (event.detail.successful) window.location.reload()"
+					><i class="bi bi-play-circle"></i> Reactivate</button>
+				}
+			</article>
+			<article>
+				<header><i class="bi bi-arrow-left-right"></i> Impersonation</header>
+				<p>Browse the app as this user. A banner lets you stop at any time.</p>
+				<form method="post" action="/auth/impersonate">
+					<input type="hidden" name="target_user_id" value={ user.ID }/>
+					<button type="submit" class="btn-sm"><i class="bi bi-person-badge"></i> Impersonate</button>
+				</form>
+			</article>
+		</div>
+		<article>
+			<header><i class="bi bi-person-badge"></i> Roles</header>
+			<div id="user-roles" hx-trigger="refresh-user-roles from:body" hx-get={ "/admin/users/" + user.ID + "/roles-fragment" } hx-swap="innerHTML">
+				@AdminUserRoleRows(user, userRoles)
+			</div>
+			<form
+				hx-post={ "/auth/admin/users/" + user.ID + "/roles" }
+				hx-swap="none"
+				hx-on::after-request="if (event.detail.successful) { htmx.trigger(document.body, 'refresh-user-roles'); event.detail.elt.reset(); }"
+			>
+				<div class="grid">
+					<select name="role_name" required>
+						<option value="">Grant role…</option>
+						for _, r := range allRoles {
+							<option value={ r.Name }>{ r.Name }</option>
+						}
+					</select>
+					<button type="submit" class="btn-sm">Grant</button>
+				</div>
+			</form>
+		</article>
+		<article>
+			<header><i class="bi bi-lock"></i> Effective permissions <small>(via granted roles)</small></header>
+			if len(permissions) == 0 {
+				<p><em>No permissions — granted transitively through roles above.</em></p>
+			} else {
+				<p>
+					for _, p := range permissions {
+						<span class="badge badge-info">{ p.Name }</span>{" "}
+					}
+				</p>
+			}
+		</article>
+		<article>
+			<header><i class="bi bi-journal-text"></i> Admin notes <small>(AppMetadata — not visible on the user's own profile)</small></header>
+			<form method="post" action={ templ.URL("/admin/users/" + user.ID + "/notes") }>
+				<textarea name="notes" rows="3">{ notes(user) }</textarea>
+				<button type="submit" class="btn-sm secondary">Save notes</button>
+			</form>
+		</article>
+		<article>
+			<header><i class="bi bi-clock-history"></i> Auth history</header>
+			if len(history) == 0 {
+				<p>No token history yet.</p>
+			} else {
+				<table class="striped">
+					<thead><tr><th>Type</th><th>Created</th><th>Expires</th><th>Revoked</th></tr></thead>
+					<tbody>
+						for _, h := range history {
+							<tr>
+								<td>{ h.TokenType }</td>
+								<td>{ h.CreatedAt.Format("2006-01-02 15:04") }</td>
+								<td>{ h.ExpiresAt.Format("2006-01-02") }</td>
+								<td>
+									if h.Revoked {
+										<span class="badge badge-error">revoked</span>
+									} else {
+										<span class="badge badge-success">active</span>
+									}
+								</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</article>
+		<article>
+			<header><i class="bi bi-list-check"></i> Audit log</header>
+			if len(auditLogs) == 0 {
+				<p>No audit events yet.</p>
+			} else {
+				<table class="striped">
+					<thead><tr><th>Event</th><th>When</th></tr></thead>
+					<tbody>
+						for _, e := range auditLogs {
+							<tr>
+								<td><code>{ e.EventType }</code></td>
+								<td>{ e.CreatedAt.Format("2006-01-02 15:04:05") }</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			}
+		</article>
+	}
+}
+
+templ AdminUserRoleRows(user *models.User, roles []*models.Role) {
+	if len(roles) == 0 {
+		<p><em>No roles granted.</em></p>
+	} else {
+		<p>
+			for _, r := range roles {
+				<span class="badge badge-primary">
+					{ r.Name }
+					<a
+						href="#"
+						title="Revoke"
+						hx-delete={ "/auth/admin/users/" + user.ID + "/roles/" + r.Name }
+						hx-confirm={ "Revoke role " + r.Name + "?" }
+						hx-target="closest span"
+						hx-swap="delete"
+					>&#215;</a>
+				</span>{" "}
+			}
+		</p>
+	}
+}
+
+func notes(user *models.User) string {
+	v, _ := models.GetAppMeta[string](user, "notes")
+	return v
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "—"
+	}
+	return s
+}
+
+func formatTimePtr(t *time.Time) string {
+	if t == nil {
+		return "—"
+	}
+	return t.Format("2006-01-02 15:04")
+}

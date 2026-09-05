@@ -1,0 +1,126 @@
+package views
+
+import (
+	"context"
+
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+)
+
+// isAdmin reports whether the current session user holds the admin RBAC
+// role, used to decide whether to show the Admin nav link.
+func isAdmin(ctx context.Context, auth *ezauth.EzAuth, user *models.User) bool {
+	if user == nil {
+		return false
+	}
+	ok, err := auth.UserHasRole(ctx, user.ID, "admin")
+	return err == nil && ok
+}
+
+templ head(title string) {
+	<head>
+		<meta charset="UTF-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+		<title>{ title } · EzAuth Example</title>
+		<meta name="description" content="A runnable showcase of EzAuth — authentication, RBAC, API keys, sessions, and impersonation — wired into Echo v5, Templ and HTMX."/>
+		<link rel="stylesheet" href="/static/pico-daisy.css"/>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+		<script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+		<style>
+			.navbar {
+				background: color-mix(in srgb, var(--primary-500) 8%, var(--pico-background-color));
+				border-bottom: 1px solid var(--pico-card-border-color);
+				padding-inline: 1rem;
+				margin-bottom: 1.5rem;
+			}
+			.brand { font-weight: 800; text-decoration: none; }
+			.impersonation-banner { padding: 0.75rem 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+			table.striped tbody tr:nth-child(odd) { background: var(--pico-card-sectioning-background-color); }
+			.secret-once { word-break: break-all; }
+		</style>
+	</head>
+}
+
+templ nav_(auth *ezauth.EzAuth) {
+	<nav class="navbar sticky-top">
+		<ul>
+			<li><a href="/" class="brand"><i class="bi bi-shield-lock-fill"></i> EzAuth Example</a></li>
+		</ul>
+		if user, err := ezauth.GetUser(ctx); err == nil && user != nil {
+			<ul>
+				<li><a href="/dashboard"><i class="bi bi-house-door"></i> Dashboard</a></li>
+				<li><a href="/profile"><i class="bi bi-person"></i> Profile</a></li>
+				<li><a href="/api-keys"><i class="bi bi-key"></i> API Keys</a></li>
+				<li><a href="/sessions"><i class="bi bi-laptop"></i> Sessions</a></li>
+				if isAdmin(ctx, auth, user) {
+					<li>
+						<details class="dropdown">
+							<summary role="button" class="outline"><i class="bi bi-shield-check"></i> Admin</summary>
+							<ul dir="rtl">
+								<li><a href="/admin/users" dir="ltr"><i class="bi bi-people"></i> Users</a></li>
+								<li><a href="/admin/roles" dir="ltr"><i class="bi bi-person-badge"></i> Roles</a></li>
+								<li><a href="/admin/permissions" dir="ltr"><i class="bi bi-lock"></i> Permissions</a></li>
+							</ul>
+						</details>
+					</li>
+				}
+				<li>
+					<button
+						class="secondary btn-sm"
+						hx-post="/auth/logout"
+						hx-swap="none"
+						hx-on::after-request="if (event.detail.successful) window.location.href = '/login'"
+					><i class="bi bi-box-arrow-right"></i> Logout</button>
+				</li>
+			</ul>
+		} else {
+			<ul>
+				<li><a href="/login" class="secondary">Login</a></li>
+				<li><a href="/register" role="button">Register</a></li>
+			</ul>
+		}
+	</nav>
+}
+
+templ impersonationBanner(auth *ezauth.EzAuth) {
+	if impersonatorID, ok := ezauth.CurrentImpersonatorID(ctx); ok {
+		if target, err := ezauth.GetUser(ctx); err == nil && target != nil {
+			if impersonator, err := auth.Repo.UserGetByID(ctx, impersonatorID); err == nil {
+				<div role="alert" class="alert-warning impersonation-banner">
+					<span><i class="bi bi-person-badge"></i> Impersonating <strong>{ target.DisplayName() }</strong> (you're really { impersonator.DisplayName() })</span>
+					<form method="post" action="/auth/impersonate/stop">
+						<button type="submit" class="btn-sm"><i class="bi bi-arrow-left-right"></i> Stop impersonating</button>
+					</form>
+				</div>
+			}
+		}
+	}
+}
+
+// flash renders EzAuth's flash error/success message, if any, using
+// picodaisy's alert classes.
+templ flash(auth *ezauth.EzAuth) {
+	if msg := auth.GetErrorMessage(ctx); msg != "" {
+		<div role="alert" class="alert-error">{ msg }</div>
+	}
+	if msg := auth.GetSuccessMessage(ctx); msg != "" {
+		<div role="alert" class="alert-success">{ msg }</div>
+	}
+}
+
+// Layout is the shared page shell used by every app-owned page: head, nav,
+// the impersonation banner (shown only while impersonating), and a flash
+// message slot fed by EzAuth's GetErrorMessage/GetSuccessMessage.
+templ Layout(auth *ezauth.EzAuth, title string) {
+	<html>
+		@head(title)
+		<body>
+			@nav_(auth)
+			<main class="container">
+				@impersonationBanner(auth)
+				@flash(auth)
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

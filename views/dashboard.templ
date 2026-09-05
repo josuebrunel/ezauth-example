@@ -1,0 +1,85 @@
+package views
+
+import (
+	"fmt"
+
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+)
+
+// DashboardStats holds the numbers shown on the dashboard's stats row.
+// SessionCount is personal (safe for any logged-in user); the rest are
+// platform-wide and only populated (IsAdmin true) for admins.
+type DashboardStats struct {
+	SessionCount int
+
+	IsAdmin         bool
+	UserCount       int
+	UserCountMore   bool // true if there are more users than UserCount reflects (capped at 100)
+	RoleCount       int
+	PermissionCount int
+}
+
+templ Dashboard(auth *ezauth.EzAuth, user *models.User, roles []*models.Role, stats DashboardStats) {
+	@Layout(auth, "Dashboard") {
+		<hgroup>
+			<h2><i class="bi bi-emoji-smile"></i> Welcome, { user.DisplayName() }</h2>
+			<p>{ user.Email }</p>
+		</hgroup>
+		<div class="stats">
+			<div class="stat">
+				<div class="stat-value">{ len(roles) }</div>
+				<div class="stat-label">Your roles</div>
+			</div>
+			<div class="stat">
+				<div class="stat-value">{ stats.SessionCount }</div>
+				<div class="stat-label">Active sessions</div>
+			</div>
+			if stats.IsAdmin {
+				<div class="stat">
+					<div class="stat-value">{ userCountLabel(stats) }</div>
+					<div class="stat-label">Users</div>
+				</div>
+				<div class="stat">
+					<div class="stat-value">{ stats.RoleCount }</div>
+					<div class="stat-label">Roles defined</div>
+				</div>
+				<div class="stat">
+					<div class="stat-value">{ stats.PermissionCount }</div>
+					<div class="stat-label">Permissions defined</div>
+				</div>
+			}
+		</div>
+		if len(roles) > 0 {
+			<p>
+				for _, role := range roles {
+					<span class="badge badge-primary">{ role.Name }</span>{" "}
+				}
+			</p>
+		}
+		<div class="grid">
+			<article class="card card-hover">
+				<h3><i class="bi bi-person"></i> Profile</h3>
+				<p>Update your name, avatar, locale and password.</p>
+				<a href="/profile" role="button" class="secondary">Go to profile</a>
+			</article>
+			<article class="card card-hover">
+				<h3><i class="bi bi-key"></i> API Keys</h3>
+				<p>Create and revoke scoped API keys.</p>
+				<a href="/api-keys" role="button" class="secondary">Manage API keys</a>
+			</article>
+			<article class="card card-hover">
+				<h3><i class="bi bi-laptop"></i> Sessions</h3>
+				<p>See every device currently logged in and revoke access.</p>
+				<a href="/sessions" role="button" class="secondary">Manage sessions</a>
+			</article>
+		</div>
+	}
+}
+
+func userCountLabel(stats DashboardStats) string {
+	if stats.UserCountMore {
+		return fmt.Sprintf("%d+", stats.UserCount)
+	}
+	return fmt.Sprintf("%d", stats.UserCount)
+}

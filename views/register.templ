@@ -1,0 +1,41 @@
+package views
+
+import "github.com/josuebrunel/ezauth"
+
+templ Register(auth *ezauth.EzAuth) {
+	@Layout(auth, "Register") {
+		<article style="max-width: 32rem; margin: 2rem auto;">
+			<header><h2>Create an account</h2></header>
+			<form method="post" action="/auth/register">
+				<div class="grid">
+					<label>
+						First name
+						<input type="text" name="first_name"/>
+					</label>
+					<label>
+						Last name
+						<input type="text" name="last_name"/>
+					</label>
+				</div>
+				<label>
+					Email
+					<input type="email" name="email" required autofocus/>
+				</label>
+				<div class="grid">
+					<label>
+						Password
+						<input type="password" name="password" required minlength="8"/>
+					</label>
+					<label>
+						Confirm password
+						<input type="password" name="password_confirm" required minlength="8"/>
+					</label>
+				</div>
+				<button type="submit">Register</button>
+			</form>
+			<footer>
+				Already have an account? <a href="/login">Log in</a>
+			</footer>
+		</article>
+	}
+}

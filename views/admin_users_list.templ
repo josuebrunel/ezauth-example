@@ -1,0 +1,51 @@
+package views
+
+import (
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+)
+
+templ AdminUsersList(auth *ezauth.EzAuth, users []*models.User, search string) {
+	@Layout(auth, "Users") {
+		<h2><i class="bi bi-people"></i> Users</h2>
+		<form hx-get="/admin/users/fragment" hx-target="#users-list" hx-swap="innerHTML" hx-trigger="input changed delay:300ms from:input, submit">
+			<input type="search" name="search" value={ search } placeholder="Search by email or username…"/>
+		</form>
+		<div id="users-list">
+			@AdminUserRows(users)
+		</div>
+	}
+}
+
+templ AdminUserRows(users []*models.User) {
+	if len(users) == 0 {
+		<p>No users found.</p>
+	} else {
+		<table class="striped">
+			<thead>
+				<tr>
+					<th>User</th>
+					<th>Status</th>
+					<th>Created</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, u := range users {
+					<tr>
+						<td><a href={ templ.URL("/admin/users/" + u.ID) }>{ u.DisplayName() }</a> <small>{ u.Email }</small></td>
+						<td>
+							if u.IsActive {
+								<span class="badge badge-success">active</span>
+							} else {
+								<span class="badge badge-error">suspended</span>
+							}
+						</td>
+						<td>{ u.CreatedAt.Format("2006-01-02") }</td>
+						<td><a href={ templ.URL("/admin/users/" + u.ID) } role="button" class="btn-sm secondary"><i class="bi bi-gear"></i> Manage</a></td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}

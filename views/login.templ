@@ -1,0 +1,26 @@
+package views
+
+import "github.com/josuebrunel/ezauth"
+
+templ Login(auth *ezauth.EzAuth) {
+	@Layout(auth, "Login") {
+		<article style="max-width: 28rem; margin: 2rem auto;">
+			<header><h2>Log in</h2></header>
+			<form method="post" action="/auth/login">
+				<label>
+					Email
+					<input type="email" name="email" required autofocus/>
+				</label>
+				<label>
+					Password
+					<input type="password" name="password" required/>
+				</label>
+				<button type="submit">Log in</button>
+			</form>
+			<footer>
+				<a href="/forgot-password">Forgot your password?</a> ·
+				<a href="/register">Create an account</a>
+			</footer>
+		</article>
+	}
+}

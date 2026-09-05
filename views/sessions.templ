@@ -1,0 +1,57 @@
+package views
+
+import (
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/service"
+)
+
+templ Sessions(auth *ezauth.EzAuth, sessions []service.SessionInfo) {
+	@Layout(auth, "Sessions") {
+		<h2><i class="bi bi-laptop"></i> Sessions</h2>
+		<p>Each row is a device/client currently logged in (an active refresh-token). Revoking one logs that device out immediately.</p>
+		<button
+			class="btn-sm"
+			hx-delete="/auth/sessions"
+			hx-confirm="Revoke every active session, including this one? You'll be logged out."
+			hx-on::after-request="if (event.detail.successful) window.location.href = '/login'"
+		><i class="bi bi-x-octagon"></i> Revoke all sessions</button>
+		<div id="sessions-list" hx-trigger="refresh-sessions from:body" hx-get="/sessions/fragment" hx-swap="innerHTML">
+			@SessionRows(sessions)
+		</div>
+	}
+}
+
+templ SessionRows(sessions []service.SessionInfo) {
+	if len(sessions) == 0 {
+		<p>No active sessions.</p>
+	} else {
+		<table class="striped">
+			<thead>
+				<tr>
+					<th>Session ID</th>
+					<th>Created</th>
+					<th>Expires</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, s := range sessions {
+					<tr>
+						<td><code>{ s.ID }</code></td>
+						<td>{ s.CreatedAt.Format("2006-01-02 15:04") }</td>
+						<td>{ s.ExpiresAt.Format("2006-01-02") }</td>
+						<td>
+							<button
+								class="btn-sm secondary"
+								hx-delete={ "/auth/sessions/" + s.ID }
+								hx-target="closest tr"
+								hx-swap="delete"
+								hx-confirm="Revoke this session?"
+							><i class="bi bi-trash"></i> Revoke</button>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}

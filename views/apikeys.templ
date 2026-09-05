@@ -1,0 +1,99 @@
+package views
+
+import (
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/service"
+)
+
+templ ApiKeys(auth *ezauth.EzAuth, keys []service.APIKeyInfo) {
+	@Layout(auth, "API Keys") {
+		<h2><i class="bi bi-key"></i> API Keys</h2>
+		<p>Scoped keys authenticate requests to EzAuth's JSON API via the <code>X-API-Key</code> header, checked by <code>RequireAPIKeyScope</code> middleware. The raw key is shown once, right after creation.</p>
+		<article>
+			<header>Create a new key</header>
+			<form
+				hx-post="/auth/api-keys"
+				hx-swap="none"
+				hx-on::after-request="ezexOnApiKeyCreated(event)"
+			>
+				<label>
+					Scopes <small>(select none for an unscoped, full-access key)</small>
+					<select name="scopes" multiple size="3">
+						<option value="profile:read">profile:read</option>
+						<option value="profile:write">profile:write</option>
+						<option value="admin:users">admin:users</option>
+					</select>
+				</label>
+				<button type="submit"><i class="bi bi-plus-lg"></i> Create API key</button>
+			</form>
+		</article>
+		<dialog id="new-api-key-dialog">
+			<article>
+				<header>Your new API key</header>
+				<p>Copy it now — EzAuth never shows the raw value again.</p>
+				<pre class="secret-once"><code id="new-api-key-value"></code></pre>
+				<footer>
+					<button autofocus onclick="document.getElementById('new-api-key-dialog').close()">Done</button>
+				</footer>
+			</article>
+		</dialog>
+		<div id="apikeys-list" hx-trigger="refresh-apikeys from:body" hx-get="/api-keys/fragment" hx-swap="innerHTML">
+			@ApiKeyRows(keys)
+		</div>
+		<script>
+			function ezexOnApiKeyCreated(evt) {
+				if (!evt.detail.successful) return;
+				var resp = JSON.parse(evt.detail.xhr.response);
+				document.getElementById('new-api-key-value').textContent = resp.data.token;
+				document.getElementById('new-api-key-dialog').showModal();
+				evt.detail.elt.reset();
+				htmx.trigger(document.body, 'refresh-apikeys');
+			}
+		</script>
+	}
+}
+
+templ ApiKeyRows(keys []service.APIKeyInfo) {
+	if len(keys) == 0 {
+		<p>No API keys yet.</p>
+	} else {
+		<table class="striped">
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Scopes</th>
+					<th>Created</th>
+					<th>Expires</th>
+					<th></th>
+				</tr>
+			</thead>
+			<tbody>
+				for _, key := range keys {
+					<tr>
+						<td><code>{ key.ID }</code></td>
+						<td>
+							if len(key.Scopes) == 0 {
+								<span class="badge">unscoped</span>
+							} else {
+								for _, scope := range key.Scopes {
+									<span class="badge badge-info">{ scope }</span>{" "}
+								}
+							}
+						</td>
+						<td>{ key.CreatedAt.Format("2006-01-02 15:04") }</td>
+						<td>{ key.ExpiresAt.Format("2006-01-02") }</td>
+						<td>
+							<button
+								class="btn-sm secondary"
+								hx-delete={ "/auth/api-keys/" + key.ID }
+								hx-target="closest tr"
+								hx-swap="delete"
+								hx-confirm="Revoke this API key? This can't be undone."
+							><i class="bi bi-trash"></i> Revoke</button>
+						</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}

@@ -1,0 +1,88 @@
+package views
+
+import (
+	"github.com/josuebrunel/ezauth"
+	"github.com/josuebrunel/ezauth/pkg/db/models"
+)
+
+templ Profile(auth *ezauth.EzAuth, user *models.User, flashSuccess, flashError string) {
+	@Layout(auth, "Profile") {
+		<h2><i class="bi bi-person"></i> Profile</h2>
+		if flashSuccess != "" {
+			<div role="alert" class="alert-success">{ flashSuccess }</div>
+		}
+		if flashError != "" {
+			<div role="alert" class="alert-error">{ flashError }</div>
+		}
+		<article>
+			<header>Account details</header>
+			<form method="post" action="/profile">
+				<label>
+					Email <small>(read-only in this example)</small>
+					<input type="email" value={ user.Email } disabled/>
+				</label>
+				<div class="grid">
+					<label>
+						First name
+						<input type="text" name="first_name" value={ user.FirstName }/>
+					</label>
+					<label>
+						Last name
+						<input type="text" name="last_name" value={ user.LastName }/>
+					</label>
+				</div>
+				<div class="grid">
+					<label>
+						Username
+						<input type="text" name="username" value={ user.Username }/>
+					</label>
+					<label>
+						Avatar URL
+						<input type="url" name="avatar_url" value={ user.AvatarURL }/>
+					</label>
+				</div>
+				<div class="grid">
+					<label>
+						Locale
+						<input type="text" name="locale" value={ user.Locale } placeholder="en-US"/>
+					</label>
+					<label>
+						Timezone
+						<input type="text" name="timezone" value={ user.Timezone } placeholder="Europe/Paris"/>
+					</label>
+				</div>
+				<label>
+					Theme preference
+					<select name="theme">
+						<option value="" selected?={ theme(user) == "" }>System default</option>
+						<option value="light" selected?={ theme(user) == "light" }>Light</option>
+						<option value="dark" selected?={ theme(user) == "dark" }>Dark</option>
+					</select>
+					<small>Stored in EzAuth's user-editable <code>UserMetadata</code> via <code>SetMeta</code>.</small>
+				</label>
+				<button type="submit"><i class="bi bi-check-lg"></i> Save changes</button>
+			</form>
+		</article>
+		<article>
+			<header>Change password</header>
+			<form method="post" action="/profile/password">
+				<div class="grid">
+					<label>
+						New password
+						<input type="password" name="password" required minlength="8"/>
+					</label>
+					<label>
+						Confirm new password
+						<input type="password" name="password_confirm" required minlength="8"/>
+					</label>
+				</div>
+				<button type="submit" class="secondary"><i class="bi bi-key"></i> Update password</button>
+			</form>
+		</article>
+	}
+}
+
+func theme(user *models.User) string {
+	v, _ := models.GetMeta[string](user, "theme")
+	return v
+}
