@@ -34,7 +34,7 @@ Visit `http://localhost:8080`. Password-reset emails land in [Mailpit](http://lo
 
 ```sh
 export EZAUTH_API_KEY=dev-api-key
-export EZAUTH_JWT_SECRET=dev-jwt-secret
+export EZAUTH_JWT_SECRET=dev-jwt-secret-at-least-32-characters-long
 export APP_ADMIN_EMAIL=admin@example.com
 make build
 make migrate-up
@@ -72,7 +72,7 @@ as often as you like; existing accounts and their passwords are never touched ag
 | Var | Required | Purpose |
 |---|---|---|
 | `EZAUTH_API_KEY` | yes | Gates `/auth/api/*` JSON routes (unused by this app's UI, but required at startup) |
-| `EZAUTH_JWT_SECRET` | yes | Signs session/access tokens |
+| `EZAUTH_JWT_SECRET` | yes | Signs session/access tokens — must be at least 32 characters (HS256 key) |
 | `EZAUTH_DB_DIALECT` / `EZAUTH_DB_DSN` | | `sqlite` / path to the `.db` file |
 | `EZAUTH_LOGIN_PAGE_URL` / `EZAUTH_REGISTER_PAGE_URL` | | Set to `/login` / `/register` — avoids a redirect loop, see `go-stack` skill notes |
 | `EZAUTH_REDIRECT_AFTER_LOGIN` / `_REGISTER` | | Set to `/dashboard` / `/login` |

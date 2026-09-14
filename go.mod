@@ -5,7 +5,7 @@ go 1.27.0
 require (
 	filippo.io/csrf v0.2.1
 	github.com/a-h/templ v0.3.1020
-	github.com/josuebrunel/ezauth v0.22.0
+	github.com/josuebrunel/ezauth v0.25.0
 	github.com/josuebrunel/gopkg/etr v0.1.1
 	github.com/josuebrunel/gopkg/xenv v0.0.2
 	github.com/josuebrunel/gopkg/xlog v0.2.0
