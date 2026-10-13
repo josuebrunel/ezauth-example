@@ -1,3 +1,5 @@
+> **Archived.** This example has been replaced by [`examples/chi`](https://github.com/josuebrunel/ezauth-admin/tree/main/examples/chi) in ezauth-admin, which covers the same flows plus a full admin panel and tracks current EzAuth releases.
+
 # EzAuth Example
 
 A runnable showcase of [EzAuth](https://github.com/josuebrunel/ezauth) — authentication, RBAC,
